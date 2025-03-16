@@ -11,6 +11,7 @@ use common::*;
 
 mod utils_module;
 use utils_module::logger_utils::*;
+use utils_module::io_utils::*;
 
 mod controller;
 
@@ -22,6 +23,13 @@ mod repository;
 use repository::redis_repository::*;
 
 mod services;
+use services::query_service::*;
+use services::redis_service::*;
+
+mod configuration;
+use configuration::system_config::*;
+use configuration::cache_schedule_config::*;
+use configuration::env_config::*;
 
 #[tokio::main]
 async fn main() {
@@ -30,8 +38,28 @@ async fn main() {
 
     info!("Yummy Cache Batch Program Start");
 
+    let system_infos: Arc<SystemConfig> = get_system_config();
+    let compile_type: &str = system_infos.complie_type().as_str();
+
+    /* Dependency Injection */
+    let query_service: QueryServicePub = QueryServicePub::new();    
+    let redis_service: RedisServicePub = RedisServicePub::new();
+    //let controller_arc = A
+    
+
+    let cache_schedules: CacheScheduleConfigList = match read_toml_from_file::<CacheScheduleConfigList>(&CACHE_LIST_PATH) {
+        Ok(cache_schedules) => cache_schedules,
+        Err(e) => {
+            error!("[Error][main()] {:?}", e);
+            panic!("[Error][main()] {:?}", e);
+        }
+    };
+
+    /* TEST CODE */
+    
+
     /* Redis Connection 초기화 */
-    init_redis_pool().await;
+    //init_redis_pool().await;
     
     // let mut handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 

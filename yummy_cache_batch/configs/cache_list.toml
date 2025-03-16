@@ -1,0 +1,6 @@
+[[cache]]
+cache_name = "store_type_major"
+cache_key_name = "categories"
+time = "0 * 9-23 * * * *"
+function_name = "store_type_major_cache"
+sql_batch_size = 100
