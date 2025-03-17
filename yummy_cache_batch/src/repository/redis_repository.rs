@@ -69,7 +69,7 @@ pub async fn get_redis_conn() -> Result<ClusterConnection, anyhow::Error> {
 
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
-    
+
     return Err(anyhow!(
         "[Error][get_connection()] Cannot Find Redis Connection"
     ));

@@ -25,7 +25,7 @@ pub enum Relation {
         from = "Column::MajorType",
         to = "super::store_type_major::Column::MajorType"
     )]
-    StoreTypeMajor
+    StoreTypeMajor,
 }
 
 impl Related<store_type_major::Entity> for store_type_sub::Entity {

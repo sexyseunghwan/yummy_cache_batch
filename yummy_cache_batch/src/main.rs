@@ -10,10 +10,11 @@ mod common;
 use common::*;
 
 mod utils_module;
-use utils_module::logger_utils::*;
 use utils_module::io_utils::*;
+use utils_module::logger_utils::*;
 
 mod controller;
+use controller::main_controller::*;
 
 mod entity;
 
@@ -27,9 +28,9 @@ use services::query_service::*;
 use services::redis_service::*;
 
 mod configuration;
-use configuration::system_config::*;
 use configuration::cache_schedule_config::*;
 use configuration::env_config::*;
+use configuration::system_config::*;
 
 #[tokio::main]
 async fn main() {
@@ -40,27 +41,35 @@ async fn main() {
 
     let system_infos: Arc<SystemConfig> = get_system_config();
     let compile_type: &str = system_infos.complie_type().as_str();
+    
+    /* Redis Connection 초기화 */
+    init_redis_pool().await;
 
     /* Dependency Injection */
-    let query_service: QueryServicePub = QueryServicePub::new();    
+    let query_service: QueryServicePub = QueryServicePub::new();
     let redis_service: RedisServicePub = RedisServicePub::new();
-    //let controller_arc = A
-    
+    let controller_arc: Arc<MainController<QueryServicePub, RedisServicePub>> =
+        Arc::new(MainController::new(query_service, redis_service));
 
-    let cache_schedules: CacheScheduleConfigList = match read_toml_from_file::<CacheScheduleConfigList>(&CACHE_LIST_PATH) {
-        Ok(cache_schedules) => cache_schedules,
-        Err(e) => {
-            error!("[Error][main()] {:?}", e);
-            panic!("[Error][main()] {:?}", e);
-        }
-    };
+    let cache_schedules: CacheScheduleConfigList =
+        match read_toml_from_file::<CacheScheduleConfigList>(&CACHE_LIST_PATH) {
+            Ok(cache_schedules) => cache_schedules,
+            Err(e) => {
+                error!("[Error][main()] {:?}", e);
+                panic!("[Error][main()] {:?}", e);
+            }
+        };
 
     /* TEST CODE */
+    let cache_schedule: &CacheScheduleConfig = cache_schedules.cache().get(0).unwrap();
+    controller_arc
+        .main_task(cache_schedule.clone())
+        .await
+        .unwrap();
     
-
     /* Redis Connection 초기화 */
     //init_redis_pool().await;
-    
+
     // let mut handles: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     // for i in 0..20 {
@@ -73,7 +82,7 @@ async fn main() {
 
     //         println!("Task {}: PING response: {}", i, pong);
     //         return_redis_conn(conn).await;
-            
+
     //         // 약간의 지연을 주어 태스크 간에 경쟁 조건이 발생하도록 함
     //         //tokio::time::sleep(Duration::from_millis(50 * i)).await;
     //         //let conn = get_connection()

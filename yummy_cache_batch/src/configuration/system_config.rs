@@ -31,7 +31,7 @@ pub fn initiate_system_config() -> SystemConfig {
             );
         }
     };
-    
+
     let complie_type: String = env::var("COMPILE_TYPE")
         .expect("[Error][initiate_system_config()] Value 'COMPILE_TYPE' not found.");
 
