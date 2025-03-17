@@ -5,9 +5,8 @@ pub type RedisClusterConnectionPool = Arc<Mutex<Vec<ClusterConnection>>>;
 #[doc = "전역적으로 사용할 Redis 클러스터 풀 (싱글톤)"]
 pub static REDIS_POOL: OnceCell<RedisClusterConnectionPool> = OnceCell::const_new();
 
+#[doc = "Redis connection pool 을 초기화 시켜주는 함수"]
 pub async fn init_redis_pool() {
-    dotenv().ok();
-
     let redis_nodes =
         env::var("REDIS_NODES").expect("REDIS_NODES environment variable is required.");
     let pool_size: usize = env::var("POOL_SIZE")

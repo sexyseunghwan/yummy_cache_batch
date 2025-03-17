@@ -33,14 +33,14 @@ pub use serde_json::{json, Value};
 
 pub use http::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 
-pub use dotenv::dotenv;
-
 pub use cron::Schedule;
 
 pub use anyhow::{anyhow, Result};
 
 pub use derive_new::new;
 pub use getset::{Getters, Setters};
+
+pub use dotenvy::from_filename;
 
 pub use redis::{
     cluster::ClusterClient, cluster_async::ClusterConnection, AsyncCommands, IntoConnectionInfo,
