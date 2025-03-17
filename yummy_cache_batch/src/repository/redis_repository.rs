@@ -13,7 +13,7 @@ pub async fn init_redis_pool() {
         .unwrap_or_else(|_| "5".to_string())
         .parse()
         .expect("POOL_SIZE must be a number.");
-
+    
     let nodes: Vec<String> = redis_nodes
         .split(',')
         .map(|s| s.trim().to_string())

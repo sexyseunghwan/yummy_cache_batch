@@ -1,0 +1,14 @@
+[[cache]]
+cache_name = "store_type_sub_dev"
+cache_key_name = "dev:categories:sub"
+time = "0 * 9-23 * * * *"
+function_name = "store_type_sub_cache"
+sql_batch_size = 100
+
+
+[[cache]]
+cache_name = "store_type_major_dev"
+cache_key_name = "dev:categories:main"
+time = "0 * 9-23 * * * *"
+function_name = "store_type_major_cache"
+sql_batch_size = 100

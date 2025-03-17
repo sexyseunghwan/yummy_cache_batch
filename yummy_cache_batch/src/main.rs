@@ -59,13 +59,53 @@ async fn main() {
                 panic!("[Error][main()] {:?}", e);
             }
         };
+    
+    if compile_type == "schedule" {
+        /*
+            [스케쥴 타입의 캐시배치 프로그램]
+            각 데이터별로 캐싱배치를 비동기적으로 실시해준다.
+            스케쥴링 대기 작업 진행
+        */
+        for cache in cache_schedules.cache {
+            let cache_clone: CacheScheduleConfig = cache.clone();
+            let controller_arc_clone: Arc<MainController<QueryServicePub, RedisServicePub>> = Arc::clone(&controller_arc);
+
+            tokio::spawn(async move {
+                if let Err(e) = controller_arc_clone.main_schedule_task(cache_clone).await {
+                    error!("[Error][main_schedule_task] {:?}", e);
+                }
+            });
+        }
+
+        /* 모두 서브테스크로 실행되므로 아래와 같이 메인 테스크를 계속 유지시켜줘야 한다. */
+        tokio::select! {
+            _ = signal::ctrl_c() => {
+                info!("Received Ctrl+C, shutting down...");
+            }
+        }
+        
+    } else if compile_type == "cli" {
+
+        /* 사용자 입력을 받아서 캐싱을 처리하는 프로그램 */
+        match controller_arc.cli_cache_task(cache_schedules).await {
+            Ok(_) => (),
+            Err(e) => {
+                error!("[Error][main()] {:?}", e);
+                panic!("[Error][main()] {:?}", e);
+            }
+        }
+
+    } else {
+        error!("[Error][main()] The 'COMPILE_TYPE' information must be 'schedule' or 'cli'.");
+        panic!("[Error][main()] The 'COMPILE_TYPE' information must be 'schedule' or 'cli'.");
+    }
 
     /* TEST CODE */
-    let cache_schedule: &CacheScheduleConfig = cache_schedules.cache().get(0).unwrap();
-    controller_arc
-        .main_task(cache_schedule.clone())
-        .await
-        .unwrap();
+    // let cache_schedule: &CacheScheduleConfig = cache_schedules.cache().get(0).unwrap();
+    // controller_arc
+    //     .main_task(cache_schedule.clone())
+    //     .await
+    //     .unwrap();
 }
 
 
