@@ -1,9 +1,9 @@
 /*
 Author      : Seunghwan Shin
-Create date : 2025-03-00
-Description :
+Create date : 2025-03-18
+Description : 디비 데이터 캐시 적재 배치 프로그램
 
-History     : 2025-03-00 Seunghwan Shin       # [v.1.0.0] first create
+History     : 2025-03-18 Seunghwan Shin       # [v.1.0.0] first create
 */
 
 mod common;

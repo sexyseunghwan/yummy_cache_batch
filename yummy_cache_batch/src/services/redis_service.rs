@@ -26,10 +26,16 @@ impl RedisService for RedisServicePub {
         let json_value: String = serde_json::to_string(&value)?;
 
         let mut redis_conn: ClusterConnection = get_redis_conn().await?;
-        redis_conn.set(key_name, json_value).await?;
-
-        return_redis_conn(redis_conn).await; /* 필수 -> Redis connection 반납. */
         
-        Ok(())
+        match redis_conn.set::<&str, String, ()>(key_name, json_value).await {
+            Ok(_) => {
+                return_redis_conn(redis_conn).await; /* 필수 -> Redis connection 반납. */
+                Ok(())
+            },
+            Err(e) => {
+                return_redis_conn(redis_conn).await; /* 필수 -> Redis connection 반납. */
+                return Err(anyhow!("{:?}", e))
+            }
+        }
     }
 }   

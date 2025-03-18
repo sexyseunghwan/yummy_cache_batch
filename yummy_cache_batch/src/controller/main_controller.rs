@@ -35,7 +35,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
             system_config.schedule_term,
         ));
 
-        // /* 한국 표준시 GMT + 9 */
+        /* 한국 표준시 GMT + 9 */
         let kst_offset: FixedOffset = match FixedOffset::east_opt(9 * 3600) {
             Some(kst_offset) => kst_offset,
             None => {
@@ -91,7 +91,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
 
         Ok(())
     }
-
+    
     #[doc = "store_type_major 테이블의 데이터를 Redis 에 캐시해주는 함수"]
     /// # Arguments
     /// * `cache_schedule` - 캐시 스케쥴러 객체
@@ -141,7 +141,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
         for store_type in store_type_subs {
             major_hash_map
                 .entry(store_type.major_type)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(store_type);   
         }
 
