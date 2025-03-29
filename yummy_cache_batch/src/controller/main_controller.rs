@@ -6,6 +6,9 @@ use crate::services::redis_service::*;
 use crate::configuration::cache_schedule_config::*;
 use crate::configuration::system_config::*;
 
+use crate::models::location_county::*;
+use crate::models::location_city::*;
+use crate::models::location_district::*;
 use crate::models::store_type_major::*;
 use crate::models::store_type_sub::*;
 
@@ -65,7 +68,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
             }
         }
     }
-
+    
     #[doc = "메인 테스트 함수"]
     /// # Arguments
     /// * `cache_schedule` - 캐시 스케쥴러 객체
@@ -81,6 +84,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
         match function_name {
             "store_type_major_cache" => self.cache_store_type_major(cache_schedule).await?,
             "store_type_sub_cache" => self.cache_store_type_sub(cache_schedule).await?,
+            "location_cache" => self.cache_location(cache_schedule).await?,
             _ => {
                 return Err(anyhow!(
                     "[Error][main_task()] The mapped function does not exists.: {}",
@@ -91,7 +95,135 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
 
         Ok(())
     }
-    
+
+    //#[doc = "location_county 테이블의 데이터를 Redis 에 캐시해주는 함수"]
+    /// # Arguments
+    /// * `cache_schedule` - 캐시 스케쥴러 객체
+    ///
+    /// # Returns
+    /// * Result<(), anyhow::Error>
+    pub async fn cache_location(
+        &self,
+        cache_schedule: CacheScheduleConfig,
+    ) -> Result<(), anyhow::Error> {
+        let cache_key_name: &str = cache_schedule.cache_key_name().as_str();
+
+        /* RDB 에서 store_type_major 테이블의 데이터를 모두 가져와준다. */
+        let location_counties: Vec<LocationCountyResult> =
+            self.query_service.get_all_location_county().await?;
+
+        /* 1. 시,도 데이터를 레디스에 저장해준다. */   
+        let location_county_prefix: String = format!("{}:location_county", cache_key_name);
+        match self
+            .redis_service
+            .set_key_value(location_county_prefix.as_str(), &location_counties)
+            .await
+            {
+                Ok(_) => {
+                    info!("[cache_location()] {} save successful.", location_county_prefix);
+                }
+                Err(e) => {
+                    return Err(anyhow!(
+                        "[Error][cache_location()] {} Failed to save cache.: {:?}",
+                        location_county_prefix ,e
+                    ));
+                }
+            }
+
+        /* 2. 군,구 데이터를 레디스에 저장한다. */
+        for county in &location_counties {
+
+            let city_prefix_name: String = format!("{}:location_city:{}", cache_key_name, county.location_county_code);
+            
+            let location_cities: Vec<LocationCityResult> =
+                self.query_service
+                    .get_location_city(county.location_county_code)
+                    .await?;
+            
+            println!("{:?}", location_cities);
+
+            match self
+                .redis_service
+                .set_key_value(city_prefix_name.as_str(), &location_cities)
+                .await
+                {
+                    Ok(_) => {
+                        info!("[cache_location()] {} save successful.", city_prefix_name);
+                    }
+                    Err(e) => {
+                        return Err(anyhow!(
+                            "[Error][cache_location()] {} Failed to save cache.: {:?}",
+                            city_prefix_name ,e
+                        ));
+                    }
+                }
+            
+            /* 3. 읍,면,동 데이터를 레디스에 저장한다. */
+            for city in &location_cities {
+                let district_prefix_name: String = format!("{}:location_district:{}", cache_key_name, city.location_city_code);
+                
+                let location_districts: Vec<LocationDistrictResult> =
+                    self.query_service
+                        .get_location_district(county.location_county_code, city.location_city_code)
+                        .await?;
+                
+                match self
+                    .redis_service
+                    .set_key_value(district_prefix_name.as_str(), location_districts)
+                    .await
+                    {
+                        Ok(_) => {
+                            info!("[cache_location()] {} save successful.", district_prefix_name);
+                        }
+                        Err(e) => {
+                            return Err(anyhow!(
+                                "[Error][cache_location()] {} Failed to save cache.: {:?}",
+                                district_prefix_name ,e
+                            ));
+                        }
+                    }
+            }
+        }
+
+
+        // for county in store_type_majors {
+        //     let cache_key_prefix_name: String = format!("{}:{}", cache_key_name, county.location_county_code);
+            
+
+
+        //     match self
+        //         .redis_service
+        //         .set_key_value(cache_key_prefix_name.as_str(), county)
+        //         .await
+        //     {
+        //         Ok(_) => {
+        //             info!(
+        //                 "[cache_location_county()] {} Cache save successful.",
+        //                 cache_key_prefix_name
+        //             );
+        //         }
+        //         Err(e) => {
+        //             return Err(anyhow!(
+        //                 "[Error][cache_location_county()] Failed to save cache.: {:?}",
+        //                 e
+        //             ));
+        //         }
+        //     }
+        // }
+
+        // /* 레디스에 상점 대분류 캐시를 저장 */
+        // match self.redis_service.set_key_value(cache_key_name, store_type_majors).await {
+        //     Ok(_) => {
+        //         info!("[cache_location_county()] Cache save successful.");
+        //     },
+        //     Err(e) => {
+        //         return Err(anyhow!("[Error][cache_location_county()] Failed to save cache.: {:?}", e));
+        //     }
+        // }
+
+        Ok(())
+    }
+
     #[doc = "store_type_major 테이블의 데이터를 Redis 에 캐시해주는 함수"]
     /// # Arguments
     /// * `cache_schedule` - 캐시 스케쥴러 객체
@@ -102,72 +234,93 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
         &self,
         cache_schedule: CacheScheduleConfig,
     ) -> Result<(), anyhow::Error> {
-        
         let cache_key_name: &str = cache_schedule.cache_key_name().as_str();
 
         /* RDB 에서 store_type_major 테이블의 데이터를 모두 가져와준다. */
         let store_type_majors: Vec<StoreTypeMajorResult> =
             self.query_service.get_all_store_type_major().await?;
-        
+
         /* 레디스에 상점 대분류 캐시를 저장 */
-        match self.redis_service.set_key_value(cache_key_name, store_type_majors).await {
+        match self
+            .redis_service
+            .set_key_value(cache_key_name, store_type_majors)
+            .await
+        {
             Ok(_) => {
                 info!("[cache_store_type_major()] Cache save successful.");
-            },
+            }
             Err(e) => {
-                return Err(anyhow!("[Error][cache_store_type_major()] Failed to save cache.: {:?}", e));
-            } 
+                return Err(anyhow!(
+                    "[Error][cache_store_type_major()] Failed to save cache.: {:?}",
+                    e
+                ));
+            }
         }
 
         Ok(())
     }
-    
+
     #[doc = "store_type_sub 테이블의 데이터를 Redis 에 캐시해주는 함수"]
     /// # Arguments
     /// * `cache_schedule` - 캐시 스케쥴러 객체
     ///
     /// # Returns
     /// * Result<(), anyhow::Error>
-    pub async fn cache_store_type_sub(&self, cache_schedule: CacheScheduleConfig) -> Result<(), anyhow::Error> {
-
+    pub async fn cache_store_type_sub(
+        &self,
+        cache_schedule: CacheScheduleConfig,
+    ) -> Result<(), anyhow::Error> {
         let cache_key_name: &str = cache_schedule.cache_key_name().as_str();
 
         /* RDB 에서 store_type_major 테이블의 데이터를 모두 가져와준다. */
         let store_type_subs: Vec<StoreTypeSubResult> =
             self.query_service.get_all_store_type_sub().await?;
-        
+
         let mut major_hash_map: HashMap<i32, Vec<StoreTypeSubResult>> = HashMap::new();
 
         for store_type in store_type_subs {
             major_hash_map
                 .entry(store_type.major_type)
                 .or_default()
-                .push(store_type);   
+                .push(store_type);
         }
 
         for (major, subs) in &major_hash_map {
-            let cache_key_prefix_name: String= format!("{}:{}", cache_key_name, major);
+            let cache_key_prefix_name: String = format!("{}:{}", cache_key_name, major);
 
-            match self.redis_service.set_key_value(cache_key_prefix_name.as_str(), subs).await {
+            match self
+                .redis_service
+                .set_key_value(cache_key_prefix_name.as_str(), subs)
+                .await
+            {
                 Ok(_) => {
-                    info!("[cache_store_type_sub()] {} Cache save successful.", cache_key_prefix_name);
-                },
+                    info!(
+                        "[cache_store_type_sub()] {} Cache save successful.",
+                        cache_key_prefix_name
+                    );
+                }
                 Err(e) => {
-                    return Err(anyhow!("[Error][cache_store_type_sub()] Failed to save cache.: {:?}", e));
-                } 
+                    return Err(anyhow!(
+                        "[Error][cache_store_type_sub()] Failed to save cache.: {:?}",
+                        e
+                    ));
+                }
             }
         }
-        
+
         Ok(())
-    } 
-    
+    }
+
     #[doc = "사용자의 입력을 받아서 캐시배치 작업을 진행시켜주는 함수"]
     /// # Arguments
     /// * `cache_schedule` - 캐시 스케쥴러 객체리스트
     ///
     /// # Returns
     /// * Result<(), anyhow::Error>
-    pub async fn cli_cache_task(&self, cache_schedules: CacheScheduleConfigList) -> Result<(), anyhow::Error> {
+    pub async fn cli_cache_task(
+        &self,
+        cache_schedules: CacheScheduleConfigList,
+    ) -> Result<(), anyhow::Error> {
         let mut stdout: io::Stdout = io::stdout();
 
         let mut idx: i32 = 0;
@@ -189,7 +342,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                 cache.cache_name()
             )
             .unwrap();
-        }   
+        }
 
         loop {
             writeln!(stdout, "\n").unwrap();
@@ -236,5 +389,4 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
 
         Ok(())
     }
-
 }

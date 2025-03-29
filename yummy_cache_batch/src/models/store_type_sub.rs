@@ -1,6 +1,5 @@
 use crate::common::*;
 
-
 #[doc = "MySQL 와 맵핑할 구조체 - store_type_sub 테이블"]
 #[derive(Debug, FromQueryResult, Serialize, Setters, new)]
 pub struct StoreTypeSubResult {
