@@ -1,4 +1,18 @@
 [[cache]]
+cache_name = "store_type_sub"
+cache_key_name = "dev:categories:sub"
+time = "0 30 9-23 * * * *"
+function_name = "store_type_sub_cache"
+sql_batch_size = 100
+
+[[cache]]
+cache_name = "store_type_major"
+cache_key_name = "dev:categories:main"
+time = "0 30 9-23 * * * *"
+function_name = "store_type_sub_major"
+sql_batch_size = 100
+
+[[cache]]
 cache_name = "location"
 cache_key_name = "dev:location"
 time = "0 * 9-23 * * * *"
