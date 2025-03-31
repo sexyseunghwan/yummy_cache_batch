@@ -117,12 +117,22 @@ impl QueryService for QueryServicePub {
                 location_district_tbl::Column::LocationDistrictCode,
                 location_district_tbl::Column::LocationCityCode,
                 location_district_tbl::Column::LocationDistrict,
+                location_district_tbl::Column::LocationCountyCode,
             ])
             .filter(location_district_tbl::Column::LocationCountyCode.eq(location_county_code))
             .filter(location_district_tbl::Column::LocationCityCode.eq(location_city_code));
+        
+        // let stmt = query.build(DbBackend::MySql);
+        // println!("stmt: {}", stmt.to_string());
 
         let location_district_results: Vec<LocationDistrictResult> =
-            query.into_model().all(db).await?;
+            match query.into_model().all(db).await {
+                Ok(results) => results,
+                Err(e) => {
+                    error!("[Error][get_location_district] {:?}", e);
+                    return Err(anyhow!("{:?}", e));
+                }
+            };
 
         Ok(location_district_results)
     }

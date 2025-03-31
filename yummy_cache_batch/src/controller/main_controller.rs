@@ -111,6 +111,8 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
         /* RDB 에서 store_type_major 테이블의 데이터를 모두 가져와준다. */
         let location_counties: Vec<LocationCountyResult> =
             self.query_service.get_all_location_county().await?;
+        
+        println!("location_counties: {:?}", location_counties);
 
         /* 1. 시,도 데이터를 레디스에 저장해준다. */   
         let location_county_prefix: String = format!("{}:location_county", cache_key_name);
@@ -139,8 +141,6 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                 self.query_service
                     .get_location_city(county.location_county_code)
                     .await?;
-            
-            println!("{:?}", location_cities);
 
             match self
                 .redis_service
@@ -167,6 +167,8 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                         .get_location_district(county.location_county_code, city.location_city_code)
                         .await?;
                 
+                println!("location_districts: {:?}", location_districts);
+
                 match self
                     .redis_service
                     .set_key_value(district_prefix_name.as_str(), location_districts)
@@ -184,42 +186,6 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                     }
             }
         }
-
-
-        // for county in store_type_majors {
-        //     let cache_key_prefix_name: String = format!("{}:{}", cache_key_name, county.location_county_code);
-            
-
-
-        //     match self
-        //         .redis_service
-        //         .set_key_value(cache_key_prefix_name.as_str(), county)
-        //         .await
-        //     {
-        //         Ok(_) => {
-        //             info!(
-        //                 "[cache_location_county()] {} Cache save successful.",
-        //                 cache_key_prefix_name
-        //             );
-        //         }
-        //         Err(e) => {
-        //             return Err(anyhow!(
-        //                 "[Error][cache_location_county()] Failed to save cache.: {:?}",
-        //                 e
-        //             ));
-        //         }
-        //     }
-        // }
-
-        // /* 레디스에 상점 대분류 캐시를 저장 */
-        // match self.redis_service.set_key_value(cache_key_name, store_type_majors).await {
-        //     Ok(_) => {
-        //         info!("[cache_location_county()] Cache save successful.");
-        //     },
-        //     Err(e) => {
-        //         return Err(anyhow!("[Error][cache_location_county()] Failed to save cache.: {:?}", e));
-        //     }
-        // }
 
         Ok(())
     }
@@ -284,6 +250,7 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                 .or_default()
                 .push(store_type);
         }
+
 
         for (major, subs) in &major_hash_map {
             let cache_key_prefix_name: String = format!("{}:{}", cache_key_name, major);
