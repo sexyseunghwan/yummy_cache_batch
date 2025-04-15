@@ -9,7 +9,7 @@ sql_batch_size = 100
 cache_name = "store_type_major"
 cache_key_name = "dev:categories:main"
 time = "0 30 9-23 * * * *"
-function_name = "store_type_sub_major"
+function_name = "store_type_major_cache"
 sql_batch_size = 100
 
 [[cache]]

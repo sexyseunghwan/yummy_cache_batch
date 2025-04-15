@@ -111,8 +111,6 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
         /* RDB 에서 store_type_major 테이블의 데이터를 모두 가져와준다. */
         let location_counties: Vec<LocationCountyResult> =
             self.query_service.get_all_location_county().await?;
-        
-        println!("location_counties: {:?}", location_counties);
 
         /* 1. 시,도 데이터를 레디스에 저장해준다. */   
         let location_county_prefix: String = format!("{}:location_county", cache_key_name);
@@ -166,8 +164,6 @@ impl<Q: QueryService, R: RedisService> MainController<Q, R> {
                     self.query_service
                         .get_location_district(county.location_county_code, city.location_city_code)
                         .await?;
-                
-                println!("location_districts: {:?}", location_districts);
 
                 match self
                     .redis_service
